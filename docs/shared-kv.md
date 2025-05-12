@@ -1,4 +1,4 @@
-##  4. Sharded Key/Value Service
+#  4. Sharded Key/Value Service
 **Objective**: Design a scalable key/value store by partitioning data into shards managed by different Raft groups.
 
 - [MIT 6.5840 Lab 4: Sharded Key/Value Service](https://nil.csail.mit.edu/6.5840/2023/labs/lab-shard.html)

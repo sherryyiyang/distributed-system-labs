@@ -1,5 +1,5 @@
 
-##  5. Persistent Key/Value Service
+# 5. Persistent Key/Value Service
 **Objective**: Enhance the key/value store with persistence to recover from complete system failures.
 
 - [6.824 Lab 5: Persistence](https://nil.csail.mit.edu/6.824/2015/labs/lab-5.html)

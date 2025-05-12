@@ -1,4 +1,4 @@
-## 2. Raft Consensus Algorithm
+# 2. Raft Consensus Algorithm
 **Objective**: Implement the Raft protocol to achieve consensus across distributed systems.
 
 - [MIT 6.5840 Lab 2: Raft](https://nil.csail.mit.edu/6.5840/2023/labs/lab-raft.html)

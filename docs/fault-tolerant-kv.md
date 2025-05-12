@@ -1,4 +1,4 @@
-## 3. Fault-Tolerant Key/Value Store
+# 3. Fault-Tolerant Key/Value Store
 **Objective**: Build a replicated key/value store leveraging the Raft consensus algorithm.
 
 - [MIT 6.5840 Lab 3: Fault-tolerant Key/Value Service](https://nil.csail.mit.edu/6.5840/2023/labs/lab-kvraft.html)
