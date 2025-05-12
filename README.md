@@ -44,26 +44,54 @@ This part of the project helped me really connect distributed consensus with act
 ##  4. Sharded Key/Value Service
 **Objective**: Design a scalable key/value store by partitioning data into shards managed by different Raft groups.
 
-Implementation Highlights:
+**Implementation appoach**:
+To implement a sharded key/value store, the key idea is to partition the key space across multiple Raft groups, allowing the system to scale horizontally. Each group is responsible for managing a subset of the shards, and shard ownership can change dynamically over time.
 
-Implemented a shard controller to manage dynamic shard assignments.
+The first step is to build a Sharding Controller (often called the ShardMaster) that maintains the current mapping of shards to groups. It exposes an RPC interface that servers periodically query to get updated configurations. The controller itself is backed by a separate Raft group to ensure consistency across reconfigurations.
 
-Handled shard migrations seamlessly during configuration changes.
+Each server group (i.e., Raft cluster) needs to keep track of:
 
-Maintained system consistency and availability during reconfigurations.
+* Its current configuration ID
+
+* Which shards it owns
+
+* What data belongs to which shard
+
+* Metadata to handle deduplication for client requests
+
+Whenever a configuration change occurs (e.g., shard movement), the server group must detect which shards it gained or lost. For shards it lost, it should stop serving them and discard local data. For shards it gained, it must fetch the data and dedup state from the previous owner, which requires implementing cross-group RPCs with retry logic.
+
+It’s critical to coordinate shard transfers through Raft to ensure atomicity and avoid split-brain conditions. A common pattern is to write a special “install shard” log entry via Raft after fetching the shard data, so all replicas apply it consistently.
+
+During reconfiguration, you also need to pause client requests for keys in "in-transit" shards to avoid serving stale or missing data. A shard should only be considered ready once:
+
+* The group is the official owner in the latest config.
+
+* The data has been transferred and committed via Raft.
+
+This problem forces you to combine consensus, reconfiguration, and state transfer — making it a great exercise in real distributed system design.
 
 
 ##  5. Persistent Key/Value Service
 **Objective**: Enhance the key/value store with persistence to recover from complete system failures.
+**Implementation appoach**:
+Adding persistence to a distributed key/value service ensures that the system can recover from full crashes — where all replicas restart and must resume from durable storage. The core of the solution is to persist Raft state and application-level snapshots, and to restore them correctly at startup.
 
-Implementation Highlights:
+The first thing to handle is Raft log and state persistence. This involves serializing currentTerm, votedFor, and the log entries using something like Go’s labgob encoder and writing them to disk after every update. This guarantees that after a crash, the server can reload Raft and resume consensus operations with no loss of data or election history.
 
-Integrated persistent storage mechanisms for Raft logs and snapshots.
+However, persisting the full Raft log indefinitely is not scalable — which is where snapshotting comes in. Once the log grows beyond a certain size, the server should take a snapshot of the entire application state (i.e., the key/value map and client deduplication info). This snapshot replaces the need for the earlier log entries, allowing the log to be compacted.
 
-Ensured data durability and quick recovery post-crash.
+Snapshotting needs to be tightly integrated with Raft:
 
-Validated system reliability through rigorous failure simulations.
-CSDN Blog
+When the application takes a snapshot, it must call Raft.Snapshot(index, snapshotData) to trim the log.
+
+The snapshot data should be generated in a consistent state, typically just after applying a committed log entry.
+
+Raft must persist this snapshot alongside its internal state so that the entire node can be rebuilt from disk.
+
+On startup, the server first restores from any existing snapshot, then replays any remaining log entries on top. It's also important that log replication logic correctly skips over log entries that were compacted away.
+
+Getting this right ensures that the system can handle complete crashes, scale better over time, and reduce startup times — which are all critical in production-quality distributed systems.
 
 ## Technologies Used
 Language: Go (Golang)
